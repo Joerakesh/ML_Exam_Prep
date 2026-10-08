@@ -1,38 +1,67 @@
-# 1. Import libraries
 import pandas as pd
+import matplotlib.pyplot as plt
 
-from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.decomposition import PCA
 
-# 2. Load dataset
-data = pd.read_csv("../data/breast_cancer_wisconsin.csv")
+# Load dataset
+df = pd.read_csv("../data/heart_disease_dataset.csv")
 
-# 3. Remove unnecessary columns
-data = data.drop(["id", "Unnamed: 32"], axis=1)
+# Separate features
+X = df.drop("Heart Disease", axis=1)
 
-# 4. Convert diagnosis into numbers
-data["diagnosis"] = data["diagnosis"].map({
-    "B": 0,
-    "M": 1
-})
+# Identify columns
+numeric_features = X.select_dtypes(
+    include=["int64", "float64"]
+).columns
 
-# 5. Separate features and target
-X = data.drop("diagnosis", axis=1)
-y = data["diagnosis"]
+categorical_features = X.select_dtypes(
+    include=["object"]
+).columns
 
-# 6. Scale the features
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+# Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", StandardScaler(), numeric_features),
+        ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_features)
+    ]
+)
 
-# 7. Apply PCA
+X_processed = preprocessor.fit_transform(X)
+
+# Convert sparse matrix to array
+if hasattr(X_processed, "toarray"):
+    X_processed = X_processed.toarray()
+
+# PCA
 pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_processed)
 
-X_pca = pca.fit_transform(X_scaled)
-
-# 8. Check explained variance
+# Explained variance
 print("Explained Variance Ratio:")
 print(pca.explained_variance_ratio_)
 
-# 9. Check new shape
-print("Original shape:", X.shape)
-print("PCA shape:", X_pca.shape)
+total_variance = pca.explained_variance_ratio_.sum()
+
+print("\nTotal Variance Explained:")
+print(total_variance)
+
+print("\nPercentage of Variance Explained:")
+print(total_variance * 100, "%")
+
+# Visualization
+plt.figure(figsize=(9, 6))
+
+plt.scatter(
+    X_pca[:, 0],
+    X_pca[:, 1],
+    s=40
+)
+
+plt.xlabel("Principal Component 1")
+plt.ylabel("Principal Component 2")
+plt.title("PCA Visualization")
+plt.grid(True)
+
+plt.show()

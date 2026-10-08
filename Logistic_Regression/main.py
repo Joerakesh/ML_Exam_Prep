@@ -1,60 +1,114 @@
-# 1. Import libraries
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
-# 2. Load dataset
-data = pd.read_csv("../data/breast_cancer_wisconsin.csv")
-
-# 3. Remove unnecessary columns
-data = data.drop(["id", "Unnamed: 32"], axis=1)
-
-# 4. Convert diagnosis into numbers
-# M = 1 (Malignant), B = 0 (Benign)
-data["diagnosis"] = data["diagnosis"].map({"M": 1, "B": 0})
-
-# 5. Separate features and target
-X = data.drop("diagnosis", axis=1)
-y = data["diagnosis"]
-
-# 6. Split data into training and testing
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    classification_report,
+    roc_curve,
+    auc
 )
 
-# 7. Scale the features
+# Load dataset
+df = pd.read_csv("../data/heart_disease_dataset.csv")
+
+# Separate features and target
+X = df.drop("Heart Disease", axis=1)
+y = df["Heart Disease"]
+
+# Identify columns
+categorical_columns = X.select_dtypes(
+    include=["object"]
+).columns
+
+# Handle missing values
+imputer = SimpleImputer(strategy="most_frequent")
+
+X[categorical_columns] = imputer.fit_transform(
+    X[categorical_columns]
+)
+
+# Label Encoding
+for column in categorical_columns:
+    encoder = LabelEncoder()
+    X[column] = encoder.fit_transform(X[column])
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+# Standardization
 scaler = StandardScaler()
 
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-# 8. Create Logistic Regression model
-model = LogisticRegression()
+# Logistic Regression
+model = LogisticRegression(
+    max_iter=1000,
+    random_state=42
+)
 
-# 9. Train the model
-model.fit(X_train, y_train)
+model.fit(X_train_scaled, y_train)
 
-# 10. Predict
-y_pred = model.predict(X_test)
+# Prediction
+y_pred = model.predict(X_test_scaled)
+y_probability = model.predict_proba(X_test_scaled)[:, 1]
 
-# 11. Evaluate the model
-print("Accuracy:", accuracy_score(y_test, y_pred))
+# Evaluation
+print("Accuracy :", round(accuracy_score(y_test, y_pred), 4))
+print("Precision:", round(precision_score(y_test, y_pred), 4))
+print("Recall   :", round(recall_score(y_test, y_pred), 4))
+print("F1 Score :", round(f1_score(y_test, y_pred), 4))
 
-print("Confusion Matrix:")
+print("\nConfusion Matrix:")
 print(confusion_matrix(y_test, y_pred))
 
-print("Classification Report:")
+print("\nClassification Report:")
 print(classification_report(y_test, y_pred))
 
-# 12. Predict a new sample
-new_data = X.iloc[[0]]
-new_data = scaler.transform(new_data)
+# ROC-AUC
+fpr, tpr, thresholds = roc_curve(
+    y_test,
+    y_probability
+)
 
-prediction = model.predict(new_data)
+roc_auc = auc(fpr, tpr)
 
-if prediction[0] == 1:
-    print("Prediction: Malignant")
-else:
-    print("Prediction: Benign")
+print("ROC-AUC Score:", round(roc_auc, 4))
+
+# ROC Curve
+plt.figure(figsize=(8, 6))
+
+plt.plot(
+    fpr,
+    tpr,
+    label="Logistic Regression (AUC = {:.3f})".format(roc_auc)
+)
+
+plt.plot(
+    [0, 1],
+    [0, 1],
+    linestyle="--",
+    label="Random Classifier"
+)
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - Heart Disease Prediction")
+plt.legend()
+plt.grid()
+plt.show()

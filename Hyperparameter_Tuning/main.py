@@ -1,61 +1,95 @@
-# 1. Import libraries
 import pandas as pd
 
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
 
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report
+)
 
-# 2. Load dataset
-data = pd.read_csv("../data/breast_cancer_wisconsin.csv")
+# Load dataset
+df = pd.read_csv("../data/heart_disease_dataset.csv")
 
-# 3. Remove unnecessary columns
-data = data.drop(["id", "Unnamed: 32"], axis=1)
+# Separate features and target
+X = df.drop("Heart Disease", axis=1)
+y = df["Heart Disease"]
 
-# 4. Convert diagnosis into numbers
-data["diagnosis"] = data["diagnosis"].map({
-    "B": 0,
-    "M": 1
-})
+# Identify columns
+numeric_features = X.select_dtypes(
+    include=["int64", "float64"]
+).columns
 
-# 5. Separate features and target
-X = data.drop("diagnosis", axis=1)
-y = data["diagnosis"]
+categorical_features = X.select_dtypes(
+    include=["object"]
+).columns
 
-# 6. Split data
+# Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", StandardScaler(), numeric_features),
+        ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_features)
+    ]
+)
+
+# SVM pipeline
+pipeline = Pipeline(
+    steps=[
+        ("preprocessor", preprocessor),
+        ("svm", SVC())
+    ]
+)
+
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
+    X,
+    y,
     test_size=0.20,
     random_state=42,
     stratify=y
 )
 
-# 7. Create model
-model = RandomForestClassifier(random_state=42)
-
-# 8. Define parameters
-parameters = {
-    "n_estimators": [50, 100, 150],
-    "max_depth": [None, 5, 10],
-    "max_features": ["sqrt", "log2"]
+# Hyperparameter grid
+param_grid = {
+    "svm__C": [0.1, 1, 10, 100],
+    "svm__kernel": ["linear", "rbf", "poly"],
+    "svm__gamma": ["scale", "auto"]
 }
 
-# 9. Hyperparameter tuning
-grid = GridSearchCV(
-    model,
-    parameters,
+# GridSearchCV
+grid_search = GridSearchCV(
+    estimator=pipeline,
+    param_grid=param_grid,
     cv=5,
-    scoring="accuracy"
+    scoring="accuracy",
+    n_jobs=-1
 )
 
-# 10. Train and find best parameters
-grid.fit(X_train, y_train)
+# Train
+grid_search.fit(X_train, y_train)
 
-# 11. Print best parameters
-print("Best Parameters:", grid.best_params_)
+# Best parameters
+print("Best Parameters:")
+print(grid_search.best_params_)
 
-# 12. Predict using best model
-y_pred = grid.predict(X_test)
+print("\nBest Cross Validation Score:")
+print(grid_search.best_score_)
 
-# 13. Evaluate
-print("Accuracy:", accuracy_score(y_test, y_pred))
+# Prediction
+best_model = grid_search.best_estimator_
+y_pred = best_model.predict(X_test)
+
+# Evaluation
+print("\nAccuracy :", accuracy_score(y_test, y_pred))
+print("Precision:", precision_score(y_test, y_pred, zero_division=0))
+print("Recall   :", recall_score(y_test, y_pred, zero_division=0))
+print("F1 Score :", f1_score(y_test, y_pred, zero_division=0))
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, zero_division=0))

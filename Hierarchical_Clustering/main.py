@@ -1,45 +1,60 @@
-# 1. Import libraries
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
 from scipy.cluster.hierarchy import dendrogram, linkage
 
-# 2. Load dataset
-data = pd.read_csv("../data/Mall_Customers.csv")
+# Load dataset
+df = pd.read_csv("../data/heart_disease_dataset.csv")
 
-# 3. Select features
-X = data[["Annual Income (k$)", "Spending Score (1-100)"]]
+# Separate features
+X = df.drop("Heart Disease", axis=1)
 
-# 4. Create dendrogram
-linked = linkage(X, method="ward")
+# Identify columns
+numeric_features = X.select_dtypes(
+    include=["int64", "float64"]
+).columns
 
-dendrogram(linked)
-plt.title("Dendrogram")
-plt.xlabel("Customers")
+categorical_features = X.select_dtypes(
+    include=["object"]
+).columns
+
+# Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", StandardScaler(), numeric_features),
+        ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_features)
+    ]
+)
+
+X_processed = preprocessor.fit_transform(X)
+
+# Convert sparse matrix to array
+if hasattr(X_processed, "toarray"):
+    X_processed = X_processed.toarray()
+
+# Hierarchical clustering
+linked = linkage(
+    X_processed,
+    method="ward"
+)
+
+# Dendrogram
+plt.figure(figsize=(14, 7))
+
+dendrogram(
+    linked,
+    truncate_mode="lastp",
+    p=30,
+    leaf_rotation=90,
+    leaf_font_size=10,
+    show_contracted=True
+)
+
+plt.title("Hierarchical Clustering Dendrogram")
+plt.xlabel("Cluster / Data Points")
 plt.ylabel("Distance")
-plt.show()
 
-# 5. Create Hierarchical Clustering model
-model = AgglomerativeClustering(
-    n_clusters=5,
-    linkage="ward"
-)
-
-# 6. Create clusters
-data["Cluster"] = model.fit_predict(X)
-
-# 7. Display results
-print(data.head())
-
-# 8. Visualize clusters
-plt.scatter(
-    data["Annual Income (k$)"],
-    data["Spending Score (1-100)"],
-    c=data["Cluster"]
-)
-
-plt.xlabel("Annual Income")
-plt.ylabel("Spending Score")
-plt.title("Hierarchical Clustering")
 plt.show()

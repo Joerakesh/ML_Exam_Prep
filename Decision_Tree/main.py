@@ -1,47 +1,57 @@
-# 1. Import libraries
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier, plot_tree
 
 from sklearn.metrics import (
     accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
     confusion_matrix,
-    classification_report
+    classification_report,
+    ConfusionMatrixDisplay
 )
 
-# 2. Load dataset
-data = pd.read_csv("../data/titanic.csv")
+# Load dataset
+df = pd.read_csv("../data/heart_disease_dataset.csv")
 
-# 3. Remove unnecessary columns
-data = data.drop(
-    ["PassengerId", "Name", "Ticket", "Cabin"],
-    axis=1
+# Separate features and target
+X = df.drop("Heart Disease", axis=1)
+y = df["Heart Disease"]
+
+# Identify columns
+categorical_columns = X.select_dtypes(include=["object"]).columns
+
+# Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_columns)
+    ],
+    remainder="passthrough"
 )
 
-# 4. Handle missing values
-data["Age"] = data["Age"].fillna(data["Age"].median())
-data["Embarked"] = data["Embarked"].fillna(data["Embarked"].mode()[0])
+# Decision Tree
+decision_tree = DecisionTreeClassifier(
+    criterion="gini",
+    max_depth=4,
+    random_state=42
+)
 
-# 5. Encode categorical columns
-data["Sex"] = data["Sex"].map({
-    "male": 0,
-    "female": 1
-})
+# Pipeline
+model = Pipeline(
+    steps=[
+        ("preprocessor", preprocessor),
+        ("classifier", decision_tree)
+    ]
+)
 
-data["Embarked"] = data["Embarked"].map({
-    "S": 0,
-    "C": 1,
-    "Q": 2
-})
-
-# 6. Separate features and target
-X = data.drop("Survived", axis=1)
-y = data["Survived"]
-
-# 7. Split data
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -50,23 +60,52 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y
 )
 
-# 8. Create Decision Tree
-model = DecisionTreeClassifier(
-    criterion="gini",
-    random_state=42
-)
-
-# 9. Train
+# Train model
 model.fit(X_train, y_train)
 
-# 10. Predict
+# Prediction
 y_pred = model.predict(X_test)
 
-# 11. Evaluate
-print("Accuracy:", accuracy_score(y_test, y_pred))
-
-print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
+# Evaluation
+print("Accuracy :", round(accuracy_score(y_test, y_pred), 4))
+print("Precision:", round(precision_score(y_test, y_pred, zero_division=0), 4))
+print("Recall   :", round(recall_score(y_test, y_pred, zero_division=0), 4))
+print("F1 Score :", round(f1_score(y_test, y_pred, zero_division=0), 4))
 
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred))
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+print("\nConfusion Matrix:")
+print(cm)
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["No Heart Disease", "Heart Disease"]
+)
+
+disp.plot()
+plt.title("Confusion Matrix - Decision Tree")
+plt.show()
+
+# Decision Tree Visualization
+tree_model = model.named_steps["classifier"]
+
+feature_names = model.named_steps[
+    "preprocessor"
+].get_feature_names_out()
+
+plt.figure(figsize=(25, 12))
+
+plot_tree(
+    tree_model,
+    feature_names=feature_names,
+    class_names=["No Heart Disease", "Heart Disease"],
+    filled=True,
+    rounded=True,
+    fontsize=8
+)
+
+plt.title("Decision Tree for Heart Disease Classification")
+plt.show()
