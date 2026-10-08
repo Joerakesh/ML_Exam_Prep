@@ -1,0 +1,4 @@
+Explained Variance Ratio:
+[0.44272026 0.18971182]
+Original shape: (569, 30)
+PCA shape: (569, 2)

@@ -1,0 +1,2 @@
+Best Parameters: {'max_depth': None, 'max_features': 'sqrt', 'n_estimators': 50}
+Accuracy: 0.9736842105263158

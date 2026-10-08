@@ -1,0 +1,15 @@
+Accuracy: 0.9736842105263158
+Confusion Matrix:
+[[70  1]
+ [ 2 41]]
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.97      0.99      0.98        71
+           1       0.98      0.95      0.96        43
+
+    accuracy                           0.97       114
+   macro avg       0.97      0.97      0.97       114
+weighted avg       0.97      0.97      0.97       114
+
+Prediction: Malignant
