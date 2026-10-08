@@ -1,128 +1,65 @@
-from config import (
-    DATA_PATH,
-    TARGET_COLUMN,
-    DROP_COLUMNS,
-    TEST_SIZE,
-    RANDOM_STATE,
-    N_NEIGHBORS
+# 1. Import libraries
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    classification_report
 )
 
-from preprocessing import (
-    load_data,
-    clean_data,
-    split_features_target,
-    encode_target,
-    split_data,
-    scale_features
+# 2. Load dataset
+data = pd.read_csv("data/breast_cancer_wisconsin.csv")
+
+# 3. Remove unnecessary columns
+data = data.drop(["id", "Unnamed: 32"], axis=1)
+
+# 4. Encode target
+# B = 0, M = 1
+encoder = LabelEncoder()
+data["diagnosis"] = encoder.fit_transform(data["diagnosis"])
+
+# 5. Separate features and target
+X = data.drop("diagnosis", axis=1)
+y = data["diagnosis"]
+
+# 6. Split into training and testing data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
 )
 
-from model import (
-    create_model,
-    train_model,
-    predict
-)
+# 7. Scale features
+scaler = StandardScaler()
 
-from evaluation import evaluate_model
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
+# 8. Create KNN model
+model = KNeighborsClassifier(n_neighbors=5)
 
-def main():
+# 9. Train model
+model.fit(X_train, y_train)
 
-    # ==============================
-    # 1. LOAD DATA
-    # ==============================
+# 10. Predict
+y_pred = model.predict(X_test)
 
-    df = load_data(DATA_PATH)
+# 11. Evaluate model
+print("Accuracy :", accuracy_score(y_test, y_pred))
+print("Precision:", precision_score(y_test, y_pred))
+print("Recall   :", recall_score(y_test, y_pred))
+print("F1 Score :", f1_score(y_test, y_pred))
 
-    print("Dataset shape:", df.shape)
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
 
-
-    # ==============================
-    # 2. CLEAN DATA
-    # ==============================
-
-    df = clean_data(df, DROP_COLUMNS)
-
-
-    # ==============================
-    # 3. FEATURES AND TARGET
-    # ==============================
-
-    X, y = split_features_target(
-        df,
-        TARGET_COLUMN
-    )
-
-
-    # ==============================
-    # 4. ENCODE TARGET
-    # ==============================
-
-    y, label_encoder = encode_target(y)
-
-    print("Classes:", label_encoder.classes_)
-
-
-    # ==============================
-    # 5. TRAIN / TEST SPLIT
-    # ==============================
-
-    X_train, X_test, y_train, y_test = split_data(
-        X,
-        y,
-        TEST_SIZE,
-        RANDOM_STATE
-    )
-
-
-    # ==============================
-    # 6. FEATURE SCALING
-    # ==============================
-
-    X_train, X_test, scaler = scale_features(
-        X_train,
-        X_test
-    )
-
-
-    # ==============================
-    # 7. CREATE KNN MODEL
-    # ==============================
-
-    model = create_model(
-        N_NEIGHBORS
-    )
-
-
-    # ==============================
-    # 8. TRAIN MODEL
-    # ==============================
-
-    model = train_model(
-        model,
-        X_train,
-        y_train
-    )
-
-
-    # ==============================
-    # 9. PREDICTION
-    # ==============================
-
-    y_pred = predict(
-        model,
-        X_test
-    )
-
-
-    # ==============================
-    # 10. EVALUATION
-    # ==============================
-
-    evaluate_model(
-        y_test,
-        y_pred
-    )
-
-
-if __name__ == "__main__":
-    main()
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
