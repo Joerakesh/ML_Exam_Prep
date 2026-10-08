@@ -15,7 +15,7 @@ from sklearn.metrics import (
 )
 
 # 2. Load dataset
-data = pd.read_csv("data/breast_cancer_wisconsin.csv")
+data = pd.read_csv("../data/breast_cancer_wisconsin.csv")
 
 # 3. Remove unnecessary columns
 data = data.drop(["id", "Unnamed: 32"], axis=1)
